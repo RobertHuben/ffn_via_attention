@@ -2,4 +2,4 @@
 
 Implements the components of a transformer (including feedforward networks) entirely via attention heads
 
-See associated blog post/writeup at https://aizi.substack.com
+See associated blog post/writeup at https://aizi.substack.com/p/no-really-attention-is-all-you-need
