@@ -4,7 +4,7 @@ def matrix_unit(size, pos1, pos2):
     # returns the size-by-size array with a 1 in the (pos1, pos2) position
     return np.array([[int(i==pos1 and j==pos2) for i in range(size)] for j in range(size)])
 
-def SiLU_W_QK_matrix(channel_to_focus, n_ctx, d_model, Omega=300):
+def SiLU_W_QK_matrix(channel_to_focus, n_ctx, d_model, Omega=1000):
     # creates the W_QK matrix used for implementing SiLU with attention heads
     W_QK_1=2*Omega*sum([matrix_unit(d_model+n_ctx+1, n_ctx+d_model, i+d_model) for i in range(n_ctx+1)])
     W_QK_2=2*Omega*sum([matrix_unit(d_model+n_ctx+1, i+d_model, i+d_model) for i in range(n_ctx)])
@@ -45,7 +45,7 @@ def rowwise_softmax(arr):
         arr=arr/sum(arr)
         return arr
 
-def SiLU_head_on_one_channel(classical_residual_stream, channel_to_focus, Omega=300):
+def SiLU_head_on_one_channel(classical_residual_stream, channel_to_focus, Omega=1000):
     # creates and applies an attention head which will apply SiLU to one dimension of the residual stream
     n_ctx=classical_residual_stream.shape[0]
     d_model=classical_residual_stream.shape[1]
@@ -55,7 +55,7 @@ def SiLU_head_on_one_channel(classical_residual_stream, channel_to_focus, Omega=
     head_output=attention_head(augmented_residual_stream, W_QK, W_OV)
     return head_output
 
-def SiLU_to_all_channels(classical_residual_stream, Omega=300):
+def SiLU_to_all_channels(classical_residual_stream, Omega=1000):
     # creates and applies attention heads which apply SiLU to all dimensions of the residual stream
     augmented_residual_stream=augment_classical_residual_stream(classical_residual_stream)
     d_model=classical_residual_stream.shape[1]
@@ -67,7 +67,7 @@ def direct_SiLU(x):
     # the SiLU function
     return x/(1+np.exp(-1*x))
 
-def linear_transformation_with_augmentation(classical_residual_stream, weight_matrix, Omega=300):
+def linear_transformation_with_augmentation(classical_residual_stream, weight_matrix, Omega=1000):
     # augments a residual stream to implement the weight matrix 
     n_ctx=classical_residual_stream.shape[0]
     d_model=classical_residual_stream.shape[1]
@@ -77,7 +77,7 @@ def linear_transformation_with_augmentation(classical_residual_stream, weight_ma
     head_output=attention_head(augmented_residual_stream, W_QK_augmented, W_OV_augmented)
     return augmented_residual_stream+head_output
 
-def normal_attention_with_augmentation(classical_residual_stream, W_QK_classical, W_OV_classical, Omega=300):
+def normal_attention_with_augmentation(classical_residual_stream, W_QK_classical, W_OV_classical, Omega=1000):
     # augments a residual stream and the W_QK and W_OV matrices to produce the same result as if there was no augmentation
     n_ctx=classical_residual_stream.shape[0]
     augmented_residual_stream=augment_classical_residual_stream(classical_residual_stream)
@@ -100,7 +100,7 @@ def matrix_corner_join(A, B):
     D=np.zeros((B.shape[0], A.shape[1]))
     return np.block([[A, C], [D,B]])
 
-def test_SiLU_function(test_residual_stream, Omega=300, error_tolerance=10**-10):
+def test_SiLU_function(test_residual_stream, Omega=1000, error_tolerance=10**-10):
     # compares result of entry-wise SiLU implemented:
     #   - directly
     #   - with attention heads
@@ -113,11 +113,11 @@ def test_SiLU_function(test_residual_stream, Omega=300, error_tolerance=10**-10)
     augmented_direct_result=augment_classical_residual_stream(direct_result)
     largest_difference=np.amax(abs(attention_based_result-augmented_direct_result))
     if largest_difference<error_tolerance:
-        print(f"The SiLU methods had nearly identical outputs!")
+        print(f"The SiLU methods had nearly identical outputs! (Max error: {largest_difference})")
     else:
         print("BAD! VERY LARGE DIFFERENCE IN SILU OUTPUTS!")
 
-def test_augmented_attention(test_residual_stream, test_W_QK, test_W_OV, Omega=300, error_tolerance=10**-10):
+def test_augmented_attention(test_residual_stream, test_W_QK, test_W_OV, Omega=1000, error_tolerance=10**-10):
     # compares result of an attention head implemented:
     #   - directly (as in a normal transformer)
     #   - directly (with the additional vector)
@@ -132,11 +132,11 @@ def test_augmented_attention(test_residual_stream, test_W_QK, test_W_OV, Omega=3
     augmented_direct_result=augment_classical_residual_stream(direct_result)
     largest_difference=np.amax(abs(attention_based_result-augmented_direct_result))
     if largest_difference<error_tolerance:
-        print(f"The attention methods had nearly identical outputs!")
+        print(f"The attention methods had nearly identical outputs! (Max error: {largest_difference})")
     else:
         print("BAD! VERY LARGE DIFFERENCE IN ATTENTION OUTPUTS!")
 
-def test_linear(test_residual_stream, test_W, Omega=300, error_tolerance=10**-10):
+def test_linear(test_residual_stream, test_W, Omega=1000, error_tolerance=10**-10):
     # compares result of a linear transformation implemented:
     #   - directly (matrix multiplication)
     #   - with attention heads
@@ -150,7 +150,7 @@ def test_linear(test_residual_stream, test_W, Omega=300, error_tolerance=10**-10
     augmented_direct_result=augment_classical_residual_stream(direct_result)
     largest_difference=np.amax(abs(attention_based_result-augmented_direct_result))
     if largest_difference<error_tolerance:
-        print(f"The linear methods had nearly identical outputs!")
+        print(f"The linear methods had nearly identical outputs! (Max error: {largest_difference})")
     else:
         print("BAD! VERY LARGE DIFFERENCE IN LINEAR OUTPUTS!")
 
